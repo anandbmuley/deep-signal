@@ -8,13 +8,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from deep_signal.workflow import run_workflow
 
+# Test constants
+TEST_INPUT_DATA = "test_resume.pdf"
+
 
 def test_workflow_completes_successfully():
     """Test that the workflow runs to completion with placeholder agents."""
-    input_data = "test_resume.pdf"
-    
     # Run the workflow
-    final_state = run_workflow(input_data)
+    final_state = run_workflow(TEST_INPUT_DATA)
     
     # Verify we got output
     assert final_state is not None
@@ -36,8 +37,7 @@ def test_workflow_completes_successfully():
 
 def test_workflow_has_parsed_content():
     """Test that the parser agent produces output."""
-    input_data = "test_resume.pdf"
-    final_state = run_workflow(input_data)
+    final_state = run_workflow(TEST_INPUT_DATA)
     
     state_data = final_state
     
@@ -49,8 +49,7 @@ def test_workflow_has_parsed_content():
 
 def test_workflow_has_analysis_results():
     """Test that the analyzer agent produces output."""
-    input_data = "test_resume.pdf"
-    final_state = run_workflow(input_data)
+    final_state = run_workflow(TEST_INPUT_DATA)
     
     state_data = final_state
     
@@ -62,8 +61,7 @@ def test_workflow_has_analysis_results():
 
 def test_workflow_has_match_results():
     """Test that the matcher agent produces output."""
-    input_data = "test_resume.pdf"
-    final_state = run_workflow(input_data)
+    final_state = run_workflow(TEST_INPUT_DATA)
     
     state_data = final_state
     
