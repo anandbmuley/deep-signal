@@ -5,6 +5,7 @@ Coordinates the three AI agents for comprehensive candidate analysis.
 Ensures no PII persistence by operating on anonymized data only.
 """
 
+import re
 from typing import Optional
 
 from .models.candidate import CandidateProfile
@@ -100,7 +101,6 @@ class DeepSignalOrchestrator:
             digit_count = sum(1 for c in candidate.candidate_id if c.isdigit())
             if digit_count >= 10:
                 # Could be a phone number
-                import re
                 if re.search(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', candidate.candidate_id):
                     raise ValueError(
                         "Candidate ID appears to contain phone number. "
