@@ -92,11 +92,8 @@ def run_workflow(input_data: str) -> dict:
     # Create and run the workflow
     app = create_workflow()
     
-    # Execute the workflow
-    final_state = None
-    for output in app.stream(initial_state):
-        # Stream outputs show the state after each node
-        final_state = output
+    # Execute the workflow using invoke to get the complete final state
+    final_state = app.invoke(initial_state)
     
     print("=" * 60)
     print("✨ Workflow Complete!")

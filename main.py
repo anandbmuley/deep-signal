@@ -21,18 +21,9 @@ def print_results(final_state: dict):
     print("📊 FINAL RESULTS")
     print("=" * 60)
     
-    # Get the actual state data (LangGraph wraps it in node names)
-    # Extract the last state from the output
+    # Get the actual state data (now using invoke, so we get the full state directly)
     if final_state:
-        # LangGraph returns dict with node names as keys
-        state_data = None
-        for key in ['matcher', 'analyzer', 'parser']:
-            if key in final_state:
-                state_data = final_state[key]
-                break
-        
-        if not state_data:
-            state_data = final_state
+        state_data = final_state
         
         print(f"Workflow Status: {'✅ Complete' if state_data.get('workflow_complete') else '⚠️  Incomplete'}")
         print()
