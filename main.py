@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from deep_signal.workflow import run_workflow
+from deep_signal.utils.llm import get_llm
 
 
 def print_results(final_state: dict):
@@ -78,6 +79,17 @@ def main():
     
     print("This is the Iron Skeleton - proving our architecture works!")
     print("No PDFs will be parsed today. All agents use placeholder logic.")
+    print()
+
+    # Verify LLM connection
+    print("🤖 Verifying Gemini Connection...")
+    try:
+        llm = get_llm()
+        response = llm.invoke("Say 'Hello from Gemini!' if you can hear me.")
+        print(f"✅ Gemini Response: {response.content}")
+    except Exception as e:
+        print(f"⚠️  Gemini Connection Failed: {e}")
+        print("   (Did you set GOOGLE_API_KEY in .env?)")
     print()
     
     # Simulate input data (will be PDF path in the future)
