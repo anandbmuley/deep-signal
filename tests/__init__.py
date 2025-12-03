@@ -1,1 +1,1 @@
-"""Tests for Deep Signal."""
+"""Test suite for DeepSignal."""

@@ -1,209 +1,247 @@
-# Deep Signal Architecture Documentation
+# DeepSignal Architecture
 
-## Overview
+## System Overview
 
-Deep Signal is an AI-powered job matching platform that uses a Tri-Agent architecture orchestrated by LangGraph. This document describes the architectural decisions, workflow design, and future implementation plans.
+DeepSignal is a Tri-Agent AI system designed to perform forensic candidate analysis. The system prioritizes verifiable data over keywords and ensures no PII persistence.
 
-## Design Philosophy
+## Architecture Diagram
 
-The "Iron Skeleton" approach allows us to:
-1. **Validate Architecture Early**: Prove the workflow structure before investing in complex implementations
-2. **Incremental Development**: Replace placeholders with real implementations one agent at a time
-3. **Clear Separation of Concerns**: Each agent has a single, well-defined responsibility
-4. **State Management**: LangGraph handles state transitions and workflow control
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   DeepSignal Orchestrator                   │
+│                                                              │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐            │
+│  │  Agent A   │  │  Agent B   │  │  Agent C   │            │
+│  │   Resume   │  │   GitHub   │  │   Credit   │            │
+│  │Verification│  │  Analysis  │  │   Score    │            │
+│  └────────────┘  └────────────┘  └────────────┘            │
+│        │               │               │                    │
+│        └───────────────┴───────────────┘                    │
+│                        │                                    │
+└────────────────────────┼────────────────────────────────────┘
+                         │
+                         ▼
+              ┌──────────────────┐
+              │  Analysis Report │
+              │  - Credit Score  │
+              │  - Risk Factors  │
+              │  - Findings      │
+              │  - Recommendations│
+              └──────────────────┘
+```
 
-## State Machine Design
+## Components
 
-### GraphState Schema
+### 1. DeepSignal Orchestrator
 
-The `GraphState` TypedDict serves as the central data structure passed between agents:
+**Location:** `src/deep_signal/orchestrator.py`
 
+**Responsibilities:**
+- Coordinates execution of all three agents
+- Validates input for PII protection
+- Aggregates results into final report
+- Ensures proper data flow between agents
+
+**Key Methods:**
+- `analyze_candidate(candidate)` - Main entry point for analysis
+- `get_agent_status()` - Returns status of all agents
+- `_validate_no_pii(candidate)` - Validates that input contains no PII
+
+### 2. Agent A: Resume Verification Agent
+
+**Location:** `src/deep_signal/agents/agent_a_resume.py`
+
+**Purpose:** Verifies resume claims and calculates skill decay scores
+
+**Key Features:**
+- **Skill Decay Calculation**: Uses exponential decay model with 18-month half-life
+- **Experience Verification**: Cross-references skills with work history
+- **Risk Identification**: Flags outdated skills and unverified claims
+
+**Algorithm:**
 ```python
-GraphState:
-  # Input
-  - input_data: str (PDF path or document identifier)
-  
-  # Parser Agent State
-  - parsed_content: dict (structured document data)
-  - parse_status: str (success/failed/pending)
-  
-  # Analyzer Agent State
-  - analysis_result: dict (insights and extracted data)
-  - key_skills: List[str] (identified skills)
-  - experience_level: str (career level)
-  - analysis_status: str (success/failed/pending)
-  
-  # Matcher Agent State
-  - match_result: dict (matching results)
-  - match_score: float (0.0 to 1.0)
-  - recommendations: List[str]
-  - match_status: str (success/failed/pending)
-  
-  # Control Flow
-  - messages: List (LangGraph message history)
-  - current_agent: str (active agent identifier)
-  - workflow_complete: bool
-  - error: Optional[str]
+skill_decay_score = 100 * exp(-lambda * months_since_last_used)
+where lambda = ln(2) / half_life_months
 ```
 
-### Workflow Graph
+**Output:**
+- Skill decay scores (0-100 per skill)
+- Verification rate (percentage of verified skills)
+- Risk factors for decayed or unverified skills
+- Overall score incorporating all factors
+
+### 3. Agent B: GitHub Analysis Agent
+
+**Location:** `src/deep_signal/agents/agent_b_github.py`
+
+**Purpose:** Detects code "green-washing" and evaluates genuine technical contributions
+
+**Key Features:**
+- **Profile Analysis**: Account age, repository count, follower metrics
+- **Repository Evaluation**: Owned vs. forked ratio, stars, engagement
+- **Contribution Assessment**: Commit quality, message analysis, activity patterns
+- **Green-Washing Detection**: Identifies patterns of superficial contributions
+
+**Green-Washing Indicators:**
+- High fork ratio (>70% forked repositories)
+- Low engagement despite many repos
+- Rapid repo creation on new accounts
+- Poor commit message quality
+- Minimal recent activity
+
+**Output:**
+- GitHub quality score (0-100)
+- Green-washing risk score (0-100, higher = more risk)
+- Repository and contribution metrics
+- Risk factors for identified issues
+
+### 4. Agent C: Credit Score Synthesizer
+
+**Location:** `src/deep_signal/agents/agent_c_synthesis.py`
+
+**Purpose:** Synthesizes inputs from Agents A and B into comprehensive assessment
+
+**Key Features:**
+- **Weighted Scoring**: Combines agent scores with confidence weighting
+- **Risk Aggregation**: Collects and categorizes all risk factors
+- **Finding Generation**: Extracts key insights from all agents
+- **Recommendation Engine**: Provides actionable hiring guidance
+
+**Scoring Formula:**
+```python
+credit_score = weighted_sum(agent_scores) - total_risk_penalties
+where:
+  weighted_sum = sum(score * confidence * weight) / sum(confidence * weight)
+  total_risk_penalties = sum(abs(risk.score_impact))
+```
+
+**Risk Levels:**
+- **CRITICAL**: Credit score < 40 or critical risks present
+- **HIGH**: Credit score < 55 or 2+ high risks
+- **MEDIUM**: Credit score < 70 or 1+ high risk or 2+ medium risks
+- **LOW**: Credit score >= 70 with no major risks
+
+**Output:**
+- Candidate credit score (0-100)
+- Overall risk level (LOW, MEDIUM, HIGH, CRITICAL)
+- Key findings (synthesized insights)
+- Actionable recommendations
+
+## Data Models
+
+### CandidateProfile
+
+**Location:** `src/deep_signal/models/candidate.py`
+
+**Purpose:** Represents candidate data for analysis (NO PII)
+
+**Fields:**
+- `candidate_id`: Anonymous identifier (e.g., "CAND-2024-001")
+- `skills`: List of Skill objects with proficiency and usage data
+- `work_experience`: List of WorkExperience objects
+- `github_username`: Public GitHub username (optional)
+- `resume_text`: Anonymized resume text (optional)
+
+### AnalysisReport
+
+**Location:** `src/deep_signal/models/report.py`
+
+**Purpose:** Final comprehensive analysis report
+
+**Fields:**
+- `candidate_id`: Anonymous identifier
+- `candidate_credit_score`: Overall score (0-100)
+- `agent_reports`: Dictionary of reports from each agent
+- `overall_risk_level`: Aggregated risk level
+- `key_findings`: List of key insights
+- `recommendations`: List of actionable recommendations
+- `metadata`: Additional context and statistics
+
+## Data Flow
 
 ```
-START
-  │
-  ├──> [Parser Agent]
-  │         │
-  │         ├──> (parse_status == "success") ──> [Analyzer Agent]
-  │         │                                          │
-  │         │                                          ├──> (analysis_status == "success") ──> [Matcher Agent]
-  │         │                                          │                                             │
-  │         │                                          └──> (analysis_status == "failed") ──> END
-  │         │
-  │         └──> (parse_status == "failed") ──> END
-  │
-  └──> [Matcher Agent] ──> END
+1. Input (CandidateProfile)
+   ↓
+2. PII Validation
+   ↓
+3. Agent A Analysis (Resume Verification)
+   ↓
+4. Agent B Analysis (GitHub Analysis)
+   ↓
+5. Agent C Synthesis (Credit Score)
+   ↓
+6. Output (AnalysisReport)
 ```
 
-## Agent Specifications
+## Security & Privacy
 
-### 1. Parser Agent
+### No PII Persistence
 
-**Responsibility**: Extract structured data from unstructured documents (PDFs)
+The system is designed to prevent PII storage through:
 
-**Current Implementation**: Placeholder with mock data
-- Simulates PDF text extraction
-- Returns structured fields (name, contact, skills, experience)
+1. **Input Validation**: Checks for email/phone patterns in candidate IDs
+2. **Anonymous Identifiers**: Requires use of non-identifying IDs
+3. **Data Model Design**: Models don't capture PII fields
+4. **Processing Only**: No database persistence layer
+5. **Clear Documentation**: Explicit warnings about PII
 
-**Future Implementation**:
-- PDF parsing using PyPDF2 or pdfplumber
-- OCR for scanned documents (Tesseract)
-- Section identification using NLP
-- Entity extraction for names, emails, dates
-- Format normalization
+### Recommended Practices
 
-**Input**: `input_data` (file path)
-**Output**: `parsed_content` (dict), `parse_status`
+1. Use anonymous candidate IDs (e.g., "CAND-YYYY-NNN")
+2. Anonymize company names in work experience
+3. Remove names, emails, phone numbers from all inputs
+4. Keep GitHub usernames as public identifiers only
+5. Store reports with anonymous identifiers only
 
-### 2. Analyzer Agent
+## Extension Points
 
-**Responsibility**: Analyze parsed content to extract meaningful insights
+### Adding New Agents
 
-**Current Implementation**: Placeholder with mock analysis
-- Simulates skill extraction
-- Returns experience level and key attributes
+To add a new agent:
 
-**Future Implementation**:
-- LLM-powered content analysis (GPT-4, Claude)
-- Skill taxonomy mapping
-- Experience level classification
-- Soft skill inference
-- Career trajectory analysis
-- Domain expertise identification
+1. Create agent class in `src/deep_signal/agents/`
+2. Implement `analyze(candidate)` method returning `AgentReport`
+3. Register agent in orchestrator
+4. Update weights in Agent C if needed
+5. Add tests for new agent
 
-**Input**: `parsed_content`
-**Output**: `analysis_result` (dict), `key_skills`, `experience_level`, `analysis_status`
+### Customizing Scoring
 
-### 3. Matcher Agent
+To customize scoring:
 
-**Responsibility**: Match candidates with jobs based on analysis
+1. **Agent A**: Modify `decay_half_life_months` for different skill decay rates
+2. **Agent B**: Adjust green-washing thresholds in `_detect_greenwashing`
+3. **Agent C**: Update `weights` dictionary to change agent importance
 
-**Current Implementation**: Placeholder with mock matching
-- Simulates compatibility scoring
-- Returns mock job matches and recommendations
+### Adding Data Sources
 
-**Future Implementation**:
-- Vector similarity matching (embeddings)
-- Multi-criteria scoring (skills, experience, culture)
-- Ranking algorithm
-- Gap analysis
-- Recommendation generation
-- Database integration for job listings
+To integrate new data sources:
 
-**Input**: `analysis_result`, `key_skills`, `experience_level`
-**Output**: `match_result` (dict), `match_score`, `recommendations`, `match_status`
-
-## Technology Decisions
-
-### LangGraph
-- **Why**: Built-in state management, conditional routing, streaming support
-- **Alternatives Considered**: Direct LangChain, custom orchestration
-- **Benefits**: Proven workflow orchestration, easy debugging, visualization support
-
-### Pydantic
-- **Why**: Type safety, validation, clear contracts between agents
-- **Benefits**: Catch errors early, self-documenting code
-
-### Python 3.11+
-- **Why**: Modern Python features, better performance, type hints
-- **Benefits**: Pattern matching, better error messages, async improvements
-
-## Error Handling Strategy
-
-Each agent independently reports success/failure through status fields:
-- `parse_status`, `analysis_status`, `match_status`
-- Conditional edges route to END on failure
-- `error` field captures error messages
-- Workflow can be resumed or retried from any point
-
-## Future Enhancements
-
-### Phase 1: Real Implementations
-- [ ] Implement PDF parsing with PyPDF2
-- [ ] Integrate OpenAI/Anthropic for analysis
-- [ ] Build vector database for matching
-
-### Phase 2: Database & API
-- [ ] PostgreSQL for job listings and candidates
-- [ ] FastAPI REST endpoints
-- [ ] Authentication and authorization
-
-### Phase 3: Advanced Features
-- [ ] Real-time matching notifications
-- [ ] Batch processing for multiple resumes
-- [ ] Admin dashboard
-- [ ] Analytics and reporting
-
-### Phase 4: Production Readiness
-- [ ] Comprehensive test suite
-- [ ] CI/CD pipeline
-- [ ] Monitoring and logging
-- [ ] Rate limiting and caching
-- [ ] Documentation and API specs
-
-## Development Guidelines
-
-1. **Maintain the Skeleton**: Keep placeholder agents functional as fallbacks
-2. **Test Each Agent**: Unit tests for each agent independently
-3. **Integration Tests**: Test the full workflow end-to-end
-4. **State Validation**: Ensure state schema is always respected
-5. **Error Recovery**: Graceful degradation when agents fail
+1. Create new agent following Agent A/B pattern
+2. Define relevant signals and risk factors
+3. Integrate into orchestrator
+4. Update Agent C to incorporate new signals
 
 ## Performance Considerations
 
-- **Async Operations**: Future agents should use async/await
-- **Caching**: Cache parsed documents and analysis results
-- **Batch Processing**: Process multiple documents in parallel
-- **Streaming**: Use LangGraph streaming for real-time updates
+- **GitHub API**: Rate-limited; use authentication token for higher limits
+- **Caching**: Consider caching GitHub data for repeated analyses
+- **Async Processing**: Agents could be run in parallel for improved performance
+- **Batch Processing**: Multiple candidates can be analyzed sequentially
 
-## Security Considerations
+## Testing Strategy
 
-- **API Keys**: Store in environment variables, never commit
-- **Data Privacy**: Encrypt sensitive resume data
-- **Access Control**: Role-based permissions for job postings
-- **Rate Limiting**: Prevent API abuse
-- **Input Validation**: Sanitize all user inputs
+- **Unit Tests**: Test each agent independently (`tests/test_agent_*.py`)
+- **Model Tests**: Validate data models (`tests/test_models.py`)
+- **Integration Tests**: Test orchestrator with full workflow (`tests/test_orchestrator.py`)
+- **Edge Cases**: PII validation, missing data, API failures
 
-## Monitoring & Observability
+## Future Enhancements
 
-Future implementations should include:
-- Agent execution time tracking
-- Success/failure rates per agent
-- State transition logging
-- Error aggregation and alerting
-- User journey tracking
-
----
-
-**Document Version**: 1.0  
-**Last Updated**: 2025-12-02  
-**Status**: Iron Skeleton Complete
+1. **Machine Learning Integration**: Train models on historical hiring outcomes
+2. **Real-time Monitoring**: Track candidate skill changes over time
+3. **Additional Agents**: LinkedIn analysis, Stack Overflow reputation, etc.
+4. **API Server**: REST API for integration with ATS systems
+5. **Dashboard**: Web UI for viewing and comparing candidates
+6. **Batch Processing**: Analyze multiple candidates efficiently
+7. **Custom Risk Profiles**: Configurable risk thresholds per organization
