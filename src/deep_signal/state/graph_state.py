@@ -1,7 +1,10 @@
 """LangGraph State definition for the Tri-Agent workflow."""
 
 from typing import Annotated, TypedDict, Optional, List
+import operator
 from langgraph.graph.message import add_messages
+from ..models.candidate import CandidateProfile
+from ..models.state import AnalysisOutput, MatcherOutput, AgentName
 
 
 class GraphState(TypedDict):
@@ -15,23 +18,18 @@ class GraphState(TypedDict):
     input_data: str  # Raw input (will be PDF path in the future)
     
     # Parser Agent outputs
-    parsed_content: Optional[dict]  # Parsed resume/job data
+    parsed_content: Optional[CandidateProfile]  # Parsed resume/job data
     parse_status: str  # Status of parsing (success, failed, pending)
     
     # Analyzer Agent outputs
-    analysis_result: Optional[dict]  # Analysis of the parsed content
-    key_skills: Optional[List[str]]  # Extracted skills
-    experience_level: Optional[str]  # Experience level
-    analysis_status: str  # Status of analysis
+    analysis: Optional[AnalysisOutput]  # Structured analysis output
     
     # Matcher Agent outputs
-    match_result: Optional[dict]  # Matching results
-    match_score: Optional[float]  # Overall match score
-    recommendations: Optional[List[str]]  # Recommendations
-    match_status: str  # Status of matching
+    matching: Optional[MatcherOutput]  # Structured matching output
+    recommendations: Annotated[List[str], operator.add]  # Recommendations (appended by agents)
     
     # Workflow control
     messages: Annotated[list, add_messages]  # Conversation history
-    current_agent: str  # Currently active agent
+    current_agent: AgentName  # Currently active agent
     workflow_complete: bool  # Whether the workflow has completed
     error: Optional[str]  # Any error that occurred

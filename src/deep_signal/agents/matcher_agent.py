@@ -2,6 +2,7 @@
 
 from typing import Dict, Any
 from ..state import GraphState
+from ..models.state import MatcherOutput, AgentName
 
 
 def matcher_agent(state: GraphState) -> Dict[str, Any]:
@@ -21,11 +22,16 @@ def matcher_agent(state: GraphState) -> Dict[str, Any]:
     print("🎯 MATCHER AGENT ACTIVATED")
     print("=" * 60)
     
-    analysis_result = state.get("analysis_result")
-    if not analysis_result:
+    # Check for analysis output in new structure
+    analysis = state.get("analysis")
+    if not analysis or not analysis.result:
         print("❌ No analysis results available!")
         return {
-            "match_status": "failed",
+            "matching": MatcherOutput(
+                result={},
+                score=0.0,
+                status="failed"
+            ),
             "error": "No analysis results to match against",
         }
     
@@ -60,11 +66,14 @@ def matcher_agent(state: GraphState) -> Dict[str, Any]:
     print()
     
     return {
-        "match_result": match_result,
-        "match_score": match_score,
+        "matching": MatcherOutput(
+            result=match_result,
+            score=match_score,
+            status="success",
+            top_match=match_result['top_matching_jobs'][0]['title']
+        ),
         "recommendations": recommendations,
-        "match_status": "success",
-        "current_agent": "matcher",
+        "current_agent": AgentName.MATCHER,
         "workflow_complete": True,
         "messages": [{"role": "system", "content": "Matcher agent completed successfully"}],
     }

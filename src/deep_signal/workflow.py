@@ -2,6 +2,7 @@
 
 from langgraph.graph import StateGraph, END
 from .state import GraphState
+from .models.state import AgentName
 from .agents import parser_agent, analyzer_agent, matcher_agent
 
 
@@ -41,7 +42,7 @@ def create_workflow() -> StateGraph:
     # Analyzer -> Matcher (conditional on success)
     workflow.add_conditional_edges(
         "analyzer",
-        lambda state: "matcher" if state["analysis_status"] == "success" else "end",
+        lambda state: "matcher" if state["analysis"] and state["analysis"].status == "success" else "end",
         {
             "matcher": "matcher",
             "end": END,
@@ -74,16 +75,11 @@ def run_workflow(input_data: str) -> dict:
         "input_data": input_data,
         "parsed_content": None,
         "parse_status": "pending",
-        "analysis_result": None,
-        "key_skills": None,
-        "experience_level": None,
-        "analysis_status": "pending",
-        "match_result": None,
-        "match_score": None,
-        "recommendations": None,
-        "match_status": "pending",
+        "analysis": None,
+        "matching": None,
+        "recommendations": [],
         "messages": [],
-        "current_agent": "none",
+        "current_agent": AgentName.NONE,
         "workflow_complete": False,
         "error": None,
     }

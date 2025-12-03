@@ -41,25 +41,32 @@ def print_results(final_state: dict):
         # Parse results
         if parsed := state_data.get('parsed_content'):
             print("📄 Parsed Content:")
-            print(f"   Name: {parsed.get('name')}")
-            print(f"   Type: {parsed.get('type')}")
+            # Handle CandidateProfile object
+            if hasattr(parsed, 'metadata'):
+                print(f"   Name: {parsed.metadata.get('name')}")
+                print(f"   Type: {parsed.metadata.get('type')}")
+            else:
+                # Fallback for dict (if any legacy code remains)
+                print(f"   Name: {parsed.get('name')}")
+                print(f"   Type: {parsed.get('type')}")
             print(f"   Status: {state_data.get('parse_status')}")
             print()
         
         # Analysis results
-        if analysis := state_data.get('analysis_result'):
+        if analysis := state_data.get('analysis'):
             print("🧠 Analysis Results:")
-            print(f"   Experience Level: {state_data.get('experience_level')}")
-            print(f"   Key Skills: {', '.join(state_data.get('key_skills', [])[:3])}...")
-            print(f"   Status: {state_data.get('analysis_status')}")
+            print(f"   Experience Level: {analysis.experience_level}")
+            print(f"   Key Skills: {', '.join(analysis.key_skills[:3])}...")
+            print(f"   Status: {analysis.status}")
             print()
         
         # Match results
-        if match := state_data.get('match_result'):
+        if matching := state_data.get('matching'):
             print("🎯 Match Results:")
-            print(f"   Overall Score: {state_data.get('match_score', 0) * 100:.1f}%")
-            print(f"   Top Match: {match['top_matching_jobs'][0]['title']} at {match['top_matching_jobs'][0]['company']}")
-            print(f"   Status: {state_data.get('match_status')}")
+            print(f"   Overall Score: {matching.score * 100:.1f}%")
+            if matching.top_match:
+                print(f"   Top Match: {matching.top_match}")
+            print(f"   Status: {matching.status}")
             print()
             
             if recommendations := state_data.get('recommendations'):

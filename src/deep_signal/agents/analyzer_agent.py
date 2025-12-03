@@ -2,6 +2,7 @@
 
 from typing import Dict, Any
 from ..state import GraphState
+from ..models.state import AnalysisOutput, AgentName
 
 
 def analyzer_agent(state: GraphState) -> Dict[str, Any]:
@@ -29,11 +30,14 @@ def analyzer_agent(state: GraphState) -> Dict[str, Any]:
             "error": "No parsed content to analyze",
         }
     
-    print(f"Analyzing parsed content for: {parsed_content.get('name', 'Unknown')}")
+    print(f"Analyzing parsed content for: {parsed_content.metadata.get('name', 'Unknown')}")
     print("Extracting skills, determining experience level, identifying strengths...")
     
     # Mock analysis results
-    key_skills = ["Python", "TensorFlow", "LangChain", "FastAPI", "Machine Learning"]
+    # In a real scenario, we would analyze parsed_content.skills and parsed_content.work_experience
+    key_skills = [s.name for s in parsed_content.skills]
+    if not key_skills:
+        key_skills = ["Python", "TensorFlow", "LangChain", "FastAPI", "Machine Learning"]
     experience_level = "Senior (5+ years)"
     
     analysis_result = {
@@ -51,10 +55,12 @@ def analyzer_agent(state: GraphState) -> Dict[str, Any]:
     print()
     
     return {
-        "analysis_result": analysis_result,
-        "key_skills": key_skills,
-        "experience_level": experience_level,
-        "analysis_status": "success",
-        "current_agent": "analyzer",
+        "analysis": AnalysisOutput(
+            result=analysis_result,
+            key_skills=key_skills,
+            experience_level=experience_level,
+            status="success"
+        ),
+        "current_agent": AgentName.ANALYZER,
         "messages": [{"role": "system", "content": "Analyzer agent completed successfully"}],
     }

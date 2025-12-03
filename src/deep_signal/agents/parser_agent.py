@@ -2,6 +2,9 @@
 
 from typing import Dict, Any
 from ..state import GraphState
+from ..models.candidate import CandidateProfile, Skill, WorkExperience
+from ..models.state import AgentName
+from datetime import datetime
 
 
 def parser_agent(state: GraphState) -> Dict[str, Any]:
@@ -27,23 +30,40 @@ def parser_agent(state: GraphState) -> Dict[str, Any]:
     print("Extracting text, identifying sections, structuring data...")
     
     # Mock parsed content
-    parsed_content = {
-        "type": "resume",
-        "name": "John Doe",
-        "contact": "john.doe@example.com",
-        "summary": "Experienced software engineer with 5+ years in AI/ML",
-        "skills_section": "Python, TensorFlow, LangChain, FastAPI",
-        "experience_section": "Senior Engineer at TechCorp (2020-2024)",
-        "education_section": "BS Computer Science, MIT",
-    }
+    # Mock parsed content using CandidateProfile
+    parsed_content = CandidateProfile(
+        candidate_id="CAND-001",
+        metadata={
+            "name": "John Doe",
+            "contact": "john.doe@example.com",
+            "summary": "Experienced software engineer with 5+ years in AI/ML",
+            "education": "BS Computer Science, MIT",
+            "type": "resume"
+        },
+        skills=[
+            Skill(name="Python", proficiency="expert", verified=True),
+            Skill(name="TensorFlow", proficiency="advanced", verified=True),
+            Skill(name="LangChain", proficiency="intermediate", verified=False),
+            Skill(name="FastAPI", proficiency="advanced", verified=True),
+        ],
+        work_experience=[
+            WorkExperience(
+                company="TechCorp",
+                position="Senior Engineer",
+                start_date=datetime(2020, 1, 1),
+                description="Senior Engineer at TechCorp (2020-2024)",
+                skills_used=["Python", "TensorFlow"]
+            )
+        ]
+    )
     
-    print(f"✅ Parsing complete! Extracted {len(parsed_content)} fields")
-    print(f"Document type: {parsed_content['type']}")
+    print(f"✅ Parsing complete! Created profile for {parsed_content.metadata.get('name')}")
+    print(f"Document type: {parsed_content.metadata.get('type')}")
     print()
     
     return {
         "parsed_content": parsed_content,
         "parse_status": "success",
-        "current_agent": "parser",
+        "current_agent": AgentName.PARSER,
         "messages": [{"role": "system", "content": "Parser agent completed successfully"}],
     }
