@@ -14,12 +14,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def get_llm(model_name: str = "gemini-2.5-flash", temperature: float = 0.0) -> ChatGoogleGenerativeAI:
+def get_llm(model_name: str = None, temperature: float = 0.0) -> ChatGoogleGenerativeAI:
     """
     Get a configured instance of Google Gemini.
     
     Args:
-        model_name: Name of the Gemini model to use (default: gemini-2.5-flash)
+        model_name: Name of the Gemini model to use. Defaults to GOOGLE_MODEL_NAME env var or "gemini-2.5-flash"
         temperature: Temperature for generation (default: 0.0)
         
     Returns:
@@ -31,6 +31,9 @@ def get_llm(model_name: str = "gemini-2.5-flash", temperature: float = 0.0) -> C
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY not found in environment variables. Please set it in your .env file.")
+    
+    if not model_name:
+        model_name = os.getenv("GOOGLE_MODEL_NAME", "gemini-2.5-flash")
         
     llm = ChatGoogleGenerativeAI(
         model=model_name,
