@@ -7,7 +7,11 @@ with placeholder agents that proves the workflow structure is valid.
 """
 
 import sys
+import warnings
 from pathlib import Path
+
+# Suppress Pydantic V1 compatibility warning for Python 3.14
+warnings.filterwarnings("ignore", category=UserWarning, module="langchain_core._api.deprecation")
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
