@@ -10,7 +10,7 @@ that inflate a profile without demonstrating genuine technical capability. It ev
 - Fork/copy-paste patterns
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 import os
 
@@ -136,13 +136,20 @@ class GitHubAnalysisAgent:
     
     def _analyze_profile(self, user) -> Dict[str, Any]:
         """Analyze GitHub user profile."""
+        created_at = user.created_at
+        if created_at.tzinfo is None:
+            # Make it offset-aware (UTC) if it's naive
+            created_at = created_at.replace(tzinfo=timezone.utc)
+            
+        now = datetime.now(timezone.utc)
+        
         return {
             "username": user.login,
             "public_repos": user.public_repos,
             "followers": user.followers,
             "following": user.following,
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-            "account_age_days": (datetime.utcnow() - user.created_at).days if user.created_at else 0,
+            "created_at": created_at.isoformat(),
+            "account_age_days": (now - created_at).days,
             "has_bio": bool(user.bio),
             "has_company": bool(user.company),
         }
@@ -207,7 +214,7 @@ class GitHubAnalysisAgent:
             if repo.fork:
                 continue
             try:
-                commits = list(repo.get_commits(author=user, since=datetime.utcnow() - timedelta(days=90))[:20])
+                commits = list(repo.get_commits(author=user, since=datetime.now(timezone.utc) - timedelta(days=90))[:20])
                 commit_data["recent_commit_count"] += len(commits)
                 
                 for commit in commits:

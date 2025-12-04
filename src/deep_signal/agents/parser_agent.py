@@ -91,6 +91,12 @@ def parser_agent(state: GraphState) -> Dict[str, Any]:
         
         parsed_profile = structured_llm.invoke(messages)
         
+        # Enrich with metadata
+        if not parsed_profile.metadata:
+            parsed_profile.metadata = {}
+        parsed_profile.metadata["type"] = "resume"
+        parsed_profile.metadata["source"] = "pdf_upload"
+        
         print(f"✅ Parsing complete! Created profile for {parsed_profile.name or 'Unknown'}")
         print(f"Document type: {parsed_profile.metadata.get('type', 'resume')}")
         print()
