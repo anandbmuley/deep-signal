@@ -4,7 +4,10 @@ import os
 from langgraph.graph import StateGraph, END
 from .state import GraphState
 from .models.state import AgentName
-from .agents import parser_agent, analyzer_agent, matcher_agent
+from .agents import parser_agent, matcher_agent
+from .agents.skill_decay_analysis_agent import skill_decay_agent
+from .agents.github_analysis_agent import github_agent
+from .agents.synthesis_agent import synthesis_agent
 
 
 def create_workflow() -> StateGraph:
@@ -13,8 +16,11 @@ def create_workflow() -> StateGraph:
     
     The workflow follows this sequence:
     1. Parser Agent: Parses input documents (PDFs)
-    2. Analyzer Agent: Analyzes parsed content
-    3. Matcher Agent: Matches against jobs/candidates
+    2. Analysis Phase (Parallel):
+       - Skill Decay Agent: Verifies resume skills
+       - GitHub Agent: Analyzes GitHub profile
+    3. Synthesis Agent: Combines insights into a credit score
+    4. Matcher Agent: Matches against jobs/candidates
     
     Returns:
         Compiled StateGraph ready for execution
@@ -24,26 +30,40 @@ def create_workflow() -> StateGraph:
     
     # Add nodes for each agent
     workflow.add_node("parser", parser_agent)
-    workflow.add_node("analyzer", analyzer_agent)
+    workflow.add_node("skill_decay", skill_decay_agent)
+    workflow.add_node("github", github_agent)
+    workflow.add_node("synthesis", synthesis_agent)
     workflow.add_node("matcher", matcher_agent)
     
-    # Define the workflow edges (sequential flow)
+    # Define the workflow edges
     workflow.set_entry_point("parser")
     
-    # Parser -> Analyzer (conditional on success)
+    # Parser -> Skill Decay & GitHub (Parallel)
+    # We use conditional edges to route to both if parsing succeeded
+    
+    def route_after_parser(state):
+        if state["parse_status"] == "success":
+            return ["skill_decay", "github"]
+        return "end"
+
     workflow.add_conditional_edges(
         "parser",
-        lambda state: "analyzer" if state["parse_status"] == "success" else "end",
+        route_after_parser,
         {
-            "analyzer": "analyzer",
+            "skill_decay": "skill_decay",
+            "github": "github",
             "end": END,
         }
     )
     
-    # Analyzer -> Matcher (conditional on success)
+    # Analysis Agents -> Synthesis
+    workflow.add_edge("skill_decay", "synthesis")
+    workflow.add_edge("github", "synthesis")
+    
+    # Synthesis -> Matcher (conditional on success)
     workflow.add_conditional_edges(
-        "analyzer",
-        lambda state: "matcher" if state["analysis"] and state["analysis"].status == "success" else "end",
+        "synthesis",
+        lambda state: "matcher" if state.get("synthesis_report") else "end",
         {
             "matcher": "matcher",
             "end": END,
@@ -60,7 +80,30 @@ def create_workflow() -> StateGraph:
 def log_state_update(state: dict):
     """Log relevant state updates based on the current agent."""
     if os.getenv("LOG_WORKFLOW_STATE", "false").lower() == "true":
-        print(f"📋 [State Update]: {state}")
+        # Check for specific agent outputs to log progress
+        if state.get("current_agent") == AgentName.PARSER:
+             parsed = state.get("parsed_content")
+             name = parsed.name if parsed else "Unknown"
+             print(f"📋 [State Update] Parser finished. Extracted profile for: {name}")
+             
+        # Check for parallel agents (they don't update current_agent)
+        if state.get("skill_decay_report"):
+            score = state["skill_decay_report"].score
+            print(f"📋 [State Update] Skill Decay Agent finished. Score: {score}")
+            
+        if state.get("github_report"):
+            score = state["github_report"].score
+            print(f"📋 [State Update] GitHub Agent finished. Score: {score}")
+            
+        if state.get("current_agent") == AgentName.SYNTHESIS:
+            report = state.get("synthesis_report")
+            score = report.candidate_credit_score if report else 0.0
+            print(f"📋 [State Update] Synthesis Agent finished. Credit Score: {score}")
+
+        if state.get("current_agent") == AgentName.MATCHER:
+            matching = state.get("matching")
+            score = matching.score if matching else 0.0
+            print(f"📋 [State Update] Matcher finished. Match Score: {score * 100:.1f}%")
 
 
 def run_workflow(input_data: str) -> dict:

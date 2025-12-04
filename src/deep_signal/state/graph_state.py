@@ -4,7 +4,8 @@ from typing import Annotated, TypedDict, Optional, List
 import operator
 from langgraph.graph.message import add_messages
 from ..models.candidate import CandidateProfile
-from ..models.state import AnalysisOutput, MatcherOutput, AgentName
+from ..models.state import MatcherOutput, AgentName
+from ..models.report import AgentReport, AnalysisReport
 
 
 class GraphState(TypedDict):
@@ -18,11 +19,13 @@ class GraphState(TypedDict):
     input_data: str  # Raw input (will be PDF path in the future)
     
     # Parser Agent outputs
-    parsed_content: Optional[CandidateProfile]  # Parsed resume/job data
-    parse_status: str  # Status of parsing (success, failed, pending)
+    parsed_content: Optional[CandidateProfile]  # Structured candidate data
+    parse_status: str  # Status of parsing (pending, success, failed)
     
-    # Analyzer Agent outputs
-    analysis: Optional[AnalysisOutput]  # Structured analysis output
+    # Agent Report outputs
+    skill_decay_report: Optional[AgentReport]  # Output from Skill Decay Agent
+    github_report: Optional[AgentReport]  # Output from GitHub Agent
+    synthesis_report: Optional[AnalysisReport]  # Output from Synthesis Agent
     
     # Matcher Agent outputs
     matching: Optional[MatcherOutput]  # Structured matching output

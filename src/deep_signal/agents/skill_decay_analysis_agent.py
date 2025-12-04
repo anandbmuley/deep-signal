@@ -7,12 +7,14 @@ This agent analyzes resumes and calculates skill decay scores based on:
 - Verification of claimed skills against work experience
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any
 import math
 
 from ..models.candidate import CandidateProfile, Skill
 from ..models.report import AgentReport, RiskFactor, RiskLevel
+from ..state import GraphState
+from ..models.state import AgentName
 
 
 class ResumeVerificationAgent:
@@ -200,3 +202,40 @@ class ResumeVerificationAgent:
             confidence_factors.append(exp_with_skills / len(candidate.work_experience))
         
         return sum(confidence_factors) / len(confidence_factors) if confidence_factors else 0.5
+
+
+def skill_decay_agent(state: GraphState) -> Dict[str, Any]:
+    """
+    Skill Decay Analysis Agent Node.
+    
+    Args:
+        state: Current graph state
+        
+    Returns:
+        Updated state with skill decay report
+    """
+    print("=" * 60)
+    print("📉 SKILL DECAY AGENT ACTIVATED")
+    print("=" * 60)
+    
+    parsed_content = state.get("parsed_content")
+    if not parsed_content:
+        print("❌ No parsed content available!")
+        return {
+            "skill_decay_report": None,
+            "current_agent": AgentName.SKILL_DECAY,
+            "error": "No parsed content to analyze"
+        }
+    
+    agent = ResumeVerificationAgent()
+    report = agent.analyze(parsed_content)
+    
+    print(f"✅ Analysis complete! Score: {report.score}")
+    print(f"Risks identified: {len(report.risk_factors)}")
+    print()
+    
+    return {
+        "skill_decay_report": report,
+        # "current_agent": AgentName.SKILL_DECAY,  # Removed to avoid parallel update conflict
+        "messages": [{"role": "system", "content": "Skill decay analysis completed"}]
+    }

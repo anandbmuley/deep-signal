@@ -9,12 +9,10 @@ This package provides three specialized agents:
 
 __version__ = "0.1.0"
 
-from .orchestrator import DeepSignalOrchestrator
 from .models.candidate import CandidateProfile
 from .models.report import AnalysisReport
 
 __all__ = [
-    "DeepSignalOrchestrator",
     "CandidateProfile",
     "AnalysisReport",
 ]

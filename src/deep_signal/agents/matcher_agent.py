@@ -22,17 +22,16 @@ def matcher_agent(state: GraphState) -> Dict[str, Any]:
     print("🎯 MATCHER AGENT ACTIVATED")
     print("=" * 60)
     
-    # Check for analysis output in new structure
-    analysis = state.get("analysis")
-    if not analysis or not analysis.result:
+    # Check for necessary inputs
+    parsed_content = state.get("parsed_content")
+    synthesis_report = state.get("synthesis_report")
+    
+    if not parsed_content or not synthesis_report:
         print("❌ No analysis results available!")
         return {
-            "matching": MatcherOutput(
-                result={},
-                score=0.0,
-                status="failed"
-            ),
-            "error": "No analysis results to match against",
+            "matching": None,
+            "current_agent": AgentName.MATCHER,
+            "error": "No analysis results to match against"
         }
     
     print("Matching candidate profile against job requirements...")

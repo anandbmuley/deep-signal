@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 class AgentName(str, Enum):
     """Enumeration of agent names."""
     PARSER = "parser"
-    ANALYZER = "analyzer"
+    SKILL_DECAY = "skill_decay"
+    GITHUB = "github"
+    SYNTHESIS = "synthesis"
     MATCHER = "matcher"
     NONE = "none"
 

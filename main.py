@@ -52,12 +52,16 @@ def print_results(final_state: dict):
             print(f"   Status: {state_data.get('parse_status')}")
             print()
         
-        # Analysis results
-        if analysis := state_data.get('analysis'):
-            print("🧠 Analysis Results:")
-            print(f"   Experience Level: {analysis.experience_level}")
-            print(f"   Key Skills: {', '.join(analysis.key_skills[:3])}...")
-            print(f"   Status: {analysis.status}")
+        # Analysis results (from Synthesis Agent)
+        if report := state_data.get('synthesis_report'):
+            print("🧠 Analysis Results (Synthesized):")
+            print(f"   Credit Score: {report.candidate_credit_score}/100")
+            print(f"   Risk Level: {report.overall_risk_level}")
+            
+            if report.key_findings:
+                print("   Key Findings:")
+                for finding in report.key_findings[:3]:
+                    print(f"   • {finding}")
             print()
         
         # Match results

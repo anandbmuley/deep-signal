@@ -5,11 +5,13 @@ This agent synthesizes insights from Agent A (Resume Verification) and Agent B (
 to produce a comprehensive Candidate Credit Score with risk assessment and actionable recommendations.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Any
 from statistics import mean
 
 from ..models.candidate import CandidateProfile
 from ..models.report import AgentReport, AnalysisReport, RiskFactor, RiskLevel
+from ..state import GraphState
+from ..models.state import AgentName
 
 
 class CreditScoreSynthesizer:
@@ -56,7 +58,7 @@ class CreditScoreSynthesizer:
         metadata = self._collect_metadata(agent_reports)
         
         return AnalysisReport(
-            candidate_id=candidate.candidate_id,
+            candidate_id=candidate.candidate_id if candidate.candidate_id else "UNKNOWN",
             candidate_credit_score=round(credit_score, 2),
             agent_reports=agent_reports,
             overall_risk_level=overall_risk,
@@ -78,32 +80,34 @@ class CreditScoreSynthesizer:
         weighted_scores = []
         
         # Get resume score (Agent A)
-        if "resume" in agent_reports:
+        if "resume" in agent_reports and agent_reports["resume"]:
             resume_report = agent_reports["resume"]
             weighted_score = resume_report.score * resume_report.confidence * self.weights["resume"]
             weighted_scores.append(weighted_score)
         
         # Get GitHub score (Agent B)
-        if "github" in agent_reports:
+        if "github" in agent_reports and agent_reports["github"]:
             github_report = agent_reports["github"]
             weighted_score = github_report.score * github_report.confidence * self.weights["github"]
             weighted_scores.append(weighted_score)
         
         # Calculate base credit score
         if weighted_scores:
-            base_score = sum(weighted_scores) / sum(
+            total_weight = sum(
                 self.weights[key] * agent_reports[key].confidence
                 for key in ["resume", "github"]
-                if key in agent_reports
+                if key in agent_reports and agent_reports[key]
             )
+            base_score = sum(weighted_scores) / total_weight if total_weight > 0 else 50.0
         else:
             base_score = 50.0  # Default neutral score
         
         # Apply risk penalties
         total_penalty = 0
         for report in agent_reports.values():
-            for risk in report.risk_factors:
-                total_penalty += abs(risk.score_impact)
+            if report:
+                for risk in report.risk_factors:
+                    total_penalty += abs(risk.score_impact)
         
         final_score = max(0, min(100, base_score - total_penalty))
         
@@ -130,13 +134,14 @@ class CreditScoreSynthesizer:
         medium_count = 0
         
         for report in agent_reports.values():
-            for risk in report.risk_factors:
-                if risk.severity == RiskLevel.CRITICAL:
-                    critical_count += 1
-                elif risk.severity == RiskLevel.HIGH:
-                    high_count += 1
-                elif risk.severity == RiskLevel.MEDIUM:
-                    medium_count += 1
+            if report:
+                for risk in report.risk_factors:
+                    if risk.severity == RiskLevel.CRITICAL:
+                        critical_count += 1
+                    elif risk.severity == RiskLevel.HIGH:
+                        high_count += 1
+                    elif risk.severity == RiskLevel.MEDIUM:
+                        medium_count += 1
         
         # Determine risk level based on counts and credit score
         if critical_count > 0 or credit_score < 40:
@@ -161,7 +166,7 @@ class CreditScoreSynthesizer:
         findings = []
         
         # Resume findings (Agent A)
-        if "resume" in agent_reports:
+        if "resume" in agent_reports and agent_reports["resume"]:
             resume_report = agent_reports["resume"]
             signals = resume_report.signals
             
@@ -180,7 +185,7 @@ class CreditScoreSynthesizer:
                     findings.append(f"Low skill verification rate ({verification['verification_rate']}%)")
         
         # GitHub findings (Agent B)
-        if "github" in agent_reports:
+        if "github" in agent_reports and agent_reports["github"]:
             github_report = agent_reports["github"]
             signals = github_report.signals
             
@@ -240,14 +245,15 @@ class CreditScoreSynthesizer:
         
         # Agent-specific recommendations
         for report in agent_reports.values():
-            for risk in report.risk_factors:
-                if risk.severity in [RiskLevel.HIGH, RiskLevel.CRITICAL]:
-                    if risk.category == "skill_decay":
-                        recommendations.append(f"Verify current proficiency in {risk.details.get('skill', 'key skills')}")
-                    elif risk.category == "green_washing":
-                        recommendations.append("Request specific code samples and conduct live coding assessment")
-                    elif risk.category == "unverified_skills":
-                        recommendations.append("Ask for specific project examples demonstrating claimed skills")
+            if report:
+                for risk in report.risk_factors:
+                    if risk.severity in [RiskLevel.HIGH, RiskLevel.CRITICAL]:
+                        if risk.category == "skill_decay":
+                            recommendations.append(f"Verify current proficiency in {risk.details.get('skill', 'key skills')}")
+                        elif risk.category == "green_washing":
+                            recommendations.append("Request specific code samples and conduct live coding assessment")
+                        elif risk.category == "unverified_skills":
+                            recommendations.append("Ask for specific project examples demonstrating claimed skills")
         
         # Ensure we have at least one recommendation
         if not recommendations:
@@ -265,13 +271,65 @@ class CreditScoreSynthesizer:
         Returns:
             Metadata dictionary
         """
+        valid_reports = [r for r in agent_reports.values() if r]
+        
         metadata = {
             "agents_used": list(agent_reports.keys()),
-            "total_risk_factors": sum(len(r.risk_factors) for r in agent_reports.values()),
+            "total_risk_factors": sum(len(r.risk_factors) for r in valid_reports),
             "average_confidence": round(
-                mean([r.confidence for r in agent_reports.values()]),
+                mean([r.confidence for r in valid_reports]),
                 2
-            ) if agent_reports else 0,
+            ) if valid_reports else 0,
         }
         
         return metadata
+
+
+def synthesis_agent(state: GraphState) -> Dict[str, Any]:
+    """
+    Synthesis Agent Node.
+    
+    Args:
+        state: Current graph state
+        
+    Returns:
+        Updated state with synthesis report
+    """
+    print("=" * 60)
+    print("🔬 SYNTHESIS AGENT ACTIVATED")
+    print("=" * 60)
+    
+    parsed_content = state.get("parsed_content")
+    skill_decay_report = state.get("skill_decay_report")
+    github_report = state.get("github_report")
+    
+    if not parsed_content:
+        return {
+            "synthesis_report": None,
+            "current_agent": AgentName.SYNTHESIS,
+            "error": "No parsed content to synthesize"
+        }
+    
+    # Collect reports
+    agent_reports = {}
+    if skill_decay_report:
+        agent_reports["resume"] = skill_decay_report
+    if github_report:
+        agent_reports["github"] = github_report
+        
+    agent = CreditScoreSynthesizer()
+    report = agent.synthesize(parsed_content, agent_reports)
+    
+    print(f"✅ Synthesis complete! Credit Score: {report.candidate_credit_score}")
+    print(f"Overall Risk: {report.overall_risk_level}")
+    print()
+    
+    # Add recommendations to the main list
+    recommendations = report.recommendations
+    
+    return {
+        "synthesis_report": report,
+        "recommendations": recommendations,
+        "current_agent": AgentName.SYNTHESIS,
+        "messages": [{"role": "system", "content": "Synthesis completed"}]
+    }

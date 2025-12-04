@@ -22,6 +22,8 @@ except ImportError:
 
 from ..models.candidate import CandidateProfile
 from ..models.report import AgentReport, RiskFactor, RiskLevel
+from ..state import GraphState
+from ..models.state import AgentName
 
 
 class GitHubAnalysisAgent:
@@ -374,3 +376,42 @@ class GitHubAnalysisAgent:
             ],
             signals=signals
         )
+
+
+def github_agent(state: GraphState) -> Dict[str, Any]:
+    """
+    GitHub Analysis Agent Node.
+    
+    Args:
+        state: Current graph state
+        
+    Returns:
+        Updated state with GitHub report
+    """
+    print("=" * 60)
+    print("🐙 GITHUB AGENT ACTIVATED")
+    print("=" * 60)
+    
+    parsed_content = state.get("parsed_content")
+    if not parsed_content:
+        return {
+            "github_report": None,
+            "current_agent": AgentName.GITHUB,
+            "error": "No parsed content to analyze"
+        }
+    
+    agent = GitHubAnalysisAgent()
+    report = agent.analyze(parsed_content)
+    
+    print(f"✅ Analysis complete! Score: {report.score}")
+    if report.signals.get("data_available") is False:
+        print(f"⚠️  {report.signals.get('error')}")
+    else:
+        print(f"Risks identified: {len(report.risk_factors)}")
+    print()
+    
+    return {
+        "github_report": report,
+        # "current_agent": AgentName.GITHUB,  # Removed to avoid parallel update conflict
+        "messages": [{"role": "system", "content": "GitHub analysis completed"}]
+    }

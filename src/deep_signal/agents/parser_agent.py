@@ -5,8 +5,9 @@ from typing import Dict, Any, List
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.messages import SystemMessage, HumanMessage
 
+from datetime import datetime
 from ..state import GraphState
-from ..models.candidate import CandidateProfile
+from ..models.candidate import CandidateProfile, Skill
 from ..models.state import AgentName
 from ..utils.llm import get_llm
 
@@ -102,11 +103,11 @@ def parser_agent(state: GraphState) -> Dict[str, Any]:
         }
         
     except Exception as e:
-        print(f"❌ Error during LLM parsing: {e}")
+        print(f"❌ Error during parsing: {e}")
         return {
             "parsed_content": None,
             "parse_status": "failed",
             "current_agent": AgentName.PARSER,
             "error": str(e),
-            "messages": [{"role": "system", "content": f"Parser failed: {e}"}],
+            "messages": [SystemMessage(content=f"Parser failed: {e}")]
         }
