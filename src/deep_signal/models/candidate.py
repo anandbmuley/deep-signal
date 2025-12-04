@@ -35,6 +35,9 @@ class CandidateProfile(BaseModel):
     """
     
     candidate_id: str = Field(..., description="Anonymous candidate identifier")
+    name: Optional[str] = Field(None, description="Candidate's full name")
+    email: Optional[str] = Field(None, description="Candidate's email address")
+    phone: Optional[str] = Field(None, description="Candidate's phone number")
     skills: List[Skill] = Field(default_factory=list, description="List of skills")
     work_experience: List[WorkExperience] = Field(default_factory=list, description="Work experience history")
     github_username: Optional[str] = Field(None, description="GitHub username for analysis")

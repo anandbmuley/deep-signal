@@ -42,8 +42,8 @@ def print_results(final_state: dict):
         if parsed := state_data.get('parsed_content'):
             print("📄 Parsed Content:")
             # Handle CandidateProfile object
-            if hasattr(parsed, 'metadata'):
-                print(f"   Name: {parsed.metadata.get('name')}")
+            if hasattr(parsed, 'name'):
+                print(f"   Name: {parsed.name}")
                 print(f"   Type: {parsed.metadata.get('type')}")
             else:
                 # Fallback for dict (if any legacy code remains)

@@ -1,5 +1,6 @@
 """LangGraph workflow orchestration for the Tri-Agent system."""
 
+import os
 from langgraph.graph import StateGraph, END
 from .state import GraphState
 from .models.state import AgentName
@@ -56,6 +57,12 @@ def create_workflow() -> StateGraph:
     return workflow.compile()
 
 
+def log_state_update(state: dict):
+    """Log relevant state updates based on the current agent."""
+    if os.getenv("LOG_WORKFLOW_STATE", "false").lower() == "true":
+        print(f"📋 [State Update]: {state}")
+
+
 def run_workflow(input_data: str) -> dict:
     """
     Execute the Tri-Agent workflow with the given input.
@@ -87,8 +94,16 @@ def run_workflow(input_data: str) -> dict:
     # Create and run the workflow
     app = create_workflow()
     
-    # Execute the workflow using invoke to get the complete final state
-    final_state = app.invoke(initial_state)
+    # Execute the workflow using stream to get intermediate states
+    final_state = initial_state
+    
+    # stream_mode="values" returns the full state at each step
+    for step_state in app.stream(initial_state, stream_mode="values"):
+        # Update final_state with the latest step
+        final_state = step_state
+        
+        # Log the update
+        log_state_update(step_state)
     
     print("=" * 60)
     print("✨ Workflow Complete!")
