@@ -74,7 +74,7 @@ def parser_agent(state: GraphState) -> Dict[str, Any]:
     print("🤖 Calling Gemini to structure data...")
     
     try:
-        llm = get_llm(temperature=0.0)
+        llm = get_llm()
         structured_llm = llm.with_structured_output(CandidateProfile)
         
         system_prompt = """You are an expert resume parser. 

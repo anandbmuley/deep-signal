@@ -15,7 +15,7 @@ def create_workflow() -> StateGraph:
     Creates the LangGraph workflow with the Tri-Agent architecture.
     
     The workflow follows this sequence:
-    1. Parser Agent: Parses input documents (PDFs)
+    1. Parser Agent: Parses input documents (PDFs) and extracts candidate's information
     2. Analysis Phase (Parallel):
        - Skill Decay Agent: Verifies resume skills
        - GitHub Agent: Analyzes GitHub profile

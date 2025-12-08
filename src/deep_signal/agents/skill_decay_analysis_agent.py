@@ -24,7 +24,7 @@ class ResumeVerificationAgent:
         """Initialize the resume verification agent."""
         self.agent_name = "Agent A: Resume Verification"
         # Decay parameters: skills lose value over time if not used
-        self.decay_half_life_months = 18  # Skills decay by 50% after 18 months of non-use
+        self.decay_half_life_months = 4  # Skills decay by 50% after 4 months of non-use
         
     def analyze(self, candidate: CandidateProfile) -> AgentReport:
         """
@@ -86,7 +86,10 @@ class ResumeVerificationAgent:
             skills: List of skills to analyze
             
         Returns:
-            Dictionary mapping skill names to decay scores (0-100)
+            Dictionary mapping skill names to decay scores (0-100).
+            Where :
+            0 - means the skill is not used for a long time.
+            100 - means the skill is used recently.
         """
         current_time = datetime.utcnow()
         decay_constant = math.log(2) / self.decay_half_life_months
